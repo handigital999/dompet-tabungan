@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dompet Tabungan</title>
+<style>
+:root{
+  --bg:#EEF1F8;--surface:#FFFFFF;--ink:#16203A;--muted:#6B7592;--line:#E1E6F2;
+  --accent:#3B4BDB;--accent-ink:#FFFFFF;--in:#0E9F78;--out:#E0434B;--track:#E6EAF5;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1426;--surface:#1A2140;--ink:#EDF0FA;--muted:#9AA3C4;--line:#2A3358;
+  --accent:#7C8CFF;--accent-ink:#0F1426;--in:#35D0A5;--out:#FF7279;--track:#2A3358;
+}}
+:root[data-theme="dark"]{
+  --bg:#0F1426;--surface:#1A2140;--ink:#EDF0FA;--muted:#9AA3C4;--line:#2A3358;
+  --accent:#7C8CFF;--accent-ink:#0F1426;--in:#35D0A5;--out:#FF7279;--track:#2A3358;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased}
+main{max-width:480px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:1.1rem;font-weight:700;margin:0 0 16px}
+h2{font-size:1rem;font-weight:700;margin:0}
+button{font:inherit;cursor:pointer;border:0;color:inherit;background:none}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.wallet{background:var(--accent);color:var(--accent-ink);border-radius:28px;padding:24px 22px 20px}
+.wallet small{opacity:.8;font-size:.85rem}
+.total{font-size:2.3rem;font-weight:800;letter-spacing:-.03em;line-height:1.15;margin:2px 0 18px;word-break:break-word}
+.seg{display:flex;height:10px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.28);gap:2px}
+.seg i{display:block;height:100%;min-width:0;transition:width .4s}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:12px 0 0;font-size:.78rem;opacity:.92}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend b{width:8px;height:8px;border-radius:50%;display:inline-block}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:20px}
+.actions button{padding:13px;border-radius:16px;font-weight:700;background:var(--accent-ink);color:var(--accent)}
+.actions button.ghost{background:rgba(255,255,255,.2);color:var(--accent-ink)}
+
+section{margin-top:28px}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.link{color:var(--accent);font-weight:700;font-size:.9rem;padding:4px 0}
+.card{background:var(--surface);border-radius:20px;padding:16px 18px;margin-bottom:10px;border:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.row .nm{font-weight:700}
+.row .amt{font-weight:700;font-variant-numeric:tabular-nums}
+.sub{color:var(--muted);font-size:.82rem}
+.bar{height:8px;border-radius:99px;background:var(--track);margin:10px 0 6px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:99px;transition:width .4s}
+
+.tx{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.tx:last-child{border-bottom:0}
+.tx .amt{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.in{color:var(--in)}.out{color:var(--out)}
+.empty{color:var(--muted);text-align:center;padding:18px 8px;font-size:.92rem}
+.edit{color:var(--accent);font-weight:700;font-size:.82rem;padding:2px 0}
+.del{display:block;width:100%;margin-top:16px;padding:12px;border-radius:14px;color:var(--out);font-weight:700;background:var(--bg)}
+.del[hidden]{display:none}
+.reset{display:block;margin:28px auto 0;color:var(--muted);font-size:.8rem;text-decoration:underline}
+
+dialog{border:0;border-radius:24px;padding:22px;width:min(440px,calc(100% - 24px));background:var(--surface);color:var(--ink);margin:auto auto 12px}
+dialog::backdrop{background:rgba(10,14,30,.55)}
+dialog h2{margin-bottom:14px}
+label{display:block;font-size:.85rem;font-weight:500;color:var(--muted);margin:12px 0 6px}
+input,select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit}
+.toggle{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border-radius:14px;padding:4px;gap:4px}
+.toggle button{padding:10px;border-radius:11px;font-weight:700;color:var(--muted)}
+.toggle button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.err{color:var(--out);font-size:.84rem;min-height:1.2em;margin:10px 0 0}
+.btns{display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:8px}
+.btns button{padding:13px;border-radius:14px;font-weight:700}
+.btns .cancel{background:var(--bg)}
+.btns .ok{background:var(--accent);color:var(--accent-ink)}
+#dHi{max-height:calc(100% - 24px);overflow:auto}
+#dHi h2{font-size:1.35rem;line-height:1.3;margin-bottom:6px}
+#dHi p{margin:0}
+.storage-status{padding:10px 12px;border:1px solid var(--out);border-radius:12px;color:var(--out);font-size:.85rem;margin:0 0 16px}
+.auth-panel{max-width:480px;margin:10vh auto 0;padding:20px 16px}
+.auth-panel[hidden]{display:none}
+.auth-card{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:22px}
+.auth-card h1{margin-bottom:6px}
+.auth-card .sub{margin:0 0 14px}
+.auth-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+.auth-actions button,.lock{padding:10px 14px;border-radius:12px;font-weight:700}
+.auth-actions .primary{background:var(--accent);color:var(--accent-ink)}
+.auth-actions .secondary{background:var(--bg);color:var(--ink)}
+.auth-error{color:var(--out);font-size:.84rem;min-height:1.2em;margin:10px 0 0}
+.topline{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.topline h1{margin-bottom:2px!important}
+.lock{background:var(--bg);color:var(--accent);font-size:.82rem}
+.goal{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-top:8px}
+.freq{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0 10px}
+.freq button{padding:8px 4px;border-radius:12px;background:var(--bg);border:1px solid var(--line);text-align:center;line-height:1.25}
+.freq button small{display:block;color:var(--muted);font-size:.7rem}
+.freq button b{display:block;font-size:.8rem;font-variant-numeric:tabular-nums;word-break:break-word}
+.freq button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.freq button[aria-pressed="true"] small{color:inherit;opacity:.85}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<section class="auth-panel" id="authPanel" aria-labelledby="authTitle">
+  <div class="auth-card">
+    <h1 id="authTitle">Dompet Tabungan</h1>
+    <p class="sub" id="authIntro">Masuk ke akun lokalmu. Setiap akun punya data terpisah dan terenkripsi.</p>
+    <label for="authUser">Nama akun</label>
+    <input id="authUser" type="text" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Contoh: namaku">
+    <label for="authPass">Kata sandi</label>
+    <input id="authPass" type="password" maxlength="128" autocomplete="current-password" placeholder="Minimal 12 karakter">
+    <div id="confirmWrap" hidden>
+      <label for="authConfirm">Ulangi kata sandi</label>
+      <input id="authConfirm" type="password" maxlength="128" autocomplete="new-password">
+    </div>
+    <p class="auth-error" id="authErr" role="alert"></p>
+    <div class="auth-actions">
+      <button type="button" class="secondary" id="authMode">Buat akun baru</button>
+      <button type="button" class="primary" id="authSubmit">Masuk</button>
+    </div>
+    <p class="sub" style="margin:12px 0 0">Nama hanya menjadi identitas akun lokal. Data hanya tersimpan di browser ini dan tidak tersinkron ke perangkat lain. Gunakan nama akun dan kata sandi berbeda untuk tiap orang. Akun dikunci saat tab ditinggalkan atau setelah 5 menit tidak aktif. Jika lupa kata sandi, data tidak dapat dipulihkan.</p>
+  </div>
+</section>
+<main id="appMain" hidden>
+  <div class="topline"><h1 id="hello">Dompet Tabungan</h1><button class="lock" id="btnLock" type="button">Kunci akun</button></div>
+  <p class="sub" id="cheer" style="margin:0 0 16px"></p>
+  <p class="storage-status" id="storageErr" role="alert" hidden></p>
+
+  <div class="wallet">
+    <small>Total tabungan</small>
+    <div class="total" id="total">Rp0</div>
+    <div class="seg" id="seg" aria-hidden="true"></div>
+    <div class="legend" id="legend"></div>
+    <div class="actions">
+      <button id="btnIn">Setor</button>
+      <button id="btnOut" class="ghost">Tarik</button>
+    </div>
+  </div>
+
+  <section>
+    <div class="head"><h2>Pos tabungan</h2><button class="link" id="btnPot">Tambah pos</button></div>
+    <div id="pots"></div>
+  </section>
+
+  <section>
+    <div class="head"><h2>Riwayat</h2></div>
+    <div class="card" id="hist"></div>
+  </section>
+
+  <button class="reset" id="btnReset">Hapus semua data</button>
+</main>
+
+<dialog id="dHi">
+  <h2>Selamat datang. Senang kamu mulai hari ini.</h2>
+  <p class="sub">Menabung tidak harus langsung besar. Yang penting rutin dan pelan-pelan. Atur dulu seperlunya, semuanya bisa kamu ubah kapan saja.</p>
+  <label for="hiName">Boleh tahu namamu?</label>
+  <input id="hiName" placeholder="Nama panggilan" maxlength="20" autocomplete="off">
+  <p class="sub" style="margin:12px 0 6px">Kamu ingin menabung untuk apa?</p>
+  <div class="goal"><input class="gn" aria-label="Tujuan 1" placeholder="Misalnya: Dana darurat" maxlength="30" autocomplete="off"><input class="gt" aria-label="Target tujuan 1" inputmode="numeric" placeholder="Target (Rp)" autocomplete="off"></div>
+  <div class="goal"><input class="gn" aria-label="Tujuan 2" placeholder="Misalnya: Liburan" maxlength="30" autocomplete="off"><input class="gt" aria-label="Target tujuan 2" inputmode="numeric" placeholder="Target (Rp)" autocomplete="off"></div>
+  <div class="goal"><input class="gn" aria-label="Tujuan 3" placeholder="Misalnya: Investasi" maxlength="30" autocomplete="off"><input class="gt" aria-label="Target tujuan 3" inputmode="numeric" placeholder="Target (Rp)" autocomplete="off"></div>
+  <p class="sub" style="margin-top:10px">Satu saja sudah cukup. Kosongkan yang tidak perlu.</p>
+  <p class="err" id="hiErr" role="alert"></p>
+  <div class="btns" style="margin-top:16px"><button type="button" class="cancel" id="hiSkip">Lewati dulu</button><button type="button" class="ok" id="hiGo">Mulai menabung</button></div>
+</dialog>
+
+<dialog id="dCf">
+  <h2>Yakin?</h2>
+  <p class="sub" id="cfMsg" style="margin:0 0 16px"></p>
+  <div class="btns"><button type="button" class="cancel" id="cfNo">Batal</button><button type="button" class="ok" id="cfYes" style="background:var(--out);color:var(--accent-ink)">Ya, hapus</button></div>
+</dialog>
+
+<dialog id="dTx">
+  <h2 id="txTitle">Catat transaksi</h2>
+  <div class="toggle">
+    <button type="button" id="tIn" aria-pressed="true">Setor</button>
+    <button type="button" id="tOut" aria-pressed="false">Tarik</button>
+  </div>
+  <label for="txPot">Pos</label><select id="txPot"></select>
+  <label for="txAmt">Jumlah (Rp)</label><input id="txAmt" inputmode="numeric" placeholder="0" autocomplete="off">
+  <label for="txNote">Catatan (opsional)</label><input id="txNote" placeholder="Misalnya: gaji bulan ini">
+  <label for="txDate">Tanggal</label><input id="txDate" type="date">
+  <p class="err" id="txErr"></p>
+  <button type="button" class="del" id="txDel" hidden>Hapus transaksi ini</button>
+  <div class="btns"><button type="button" class="cancel" data-close>Batal</button><button type="button" class="ok" id="txSave">Simpan</button></div>
+</dialog>
+
+<dialog id="dPot">
+  <h2 id="potTitle">Pos baru</h2>
+  <label for="potName">Nama pos</label><input id="potName" placeholder="Misalnya: Liburan" maxlength="30" autocomplete="off">
+  <label for="potTarget">Target (Rp)</label><input id="potTarget" inputmode="numeric" placeholder="0" autocomplete="off">
+  <label for="potDate">Target tanggal (opsional)</label><input id="potDate" type="date">
+  <p class="err" id="potErr"></p>
+  <button type="button" class="del" id="potDel" hidden>Hapus pos ini</button>
+  <div class="btns"><button type="button" class="cancel" data-close>Batal</button><button type="button" class="ok" id="potSave">Buat pos</button></div>
+</dialog>
+
+<script>
+const COLORS=["#FFD166","#06D6A0","#FF8FAB","#4CC9F0","#B388FF","#FF9F1C"];
+const KEY="dompet-tabungan-v1";
+const ACCOUNT_PREFIX="dompet-tabungan-account-v1:";
+const $=id=>document.getElementById(id);
+const rp=n=>"Rp"+new Intl.NumberFormat("id-ID").format(Math.round(n));
+const num=s=>parseInt(String(s).replace(/\D/g,""),10)||0;
+const today=()=>{const d=new Date();return new Date(d-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const fmtDate=s=>new Date(s+"T00:00:00").toLocaleDateString("id-ID",{day:"numeric",month:"short",year:"numeric"});
+
+const emptyState=()=>({pots:[],txs:[]});
+function validDate(s){
+  if(typeof s!=="string"||! /^\d{4}-\d{2}-\d{2}$/.test(s))return false;
+  const d=new Date(s+"T00:00:00Z");
+  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===s;
+}
+function parseState(raw){
+  const saved=JSON.parse(raw);
+  if(!saved||!Array.isArray(saved.pots)||!Array.isArray(saved.txs))throw new Error("Format data tidak dikenali.");
+  const pots=saved.pots.map((p,i)=>{
+    if(!p||typeof p.id!=="string"||!/^[\w-]+$/.test(p.id)||typeof p.name!=="string"||!Number.isSafeInteger(p.target)||p.target<0||!(p.date==null||p.date===""||validDate(p.date)))throw new Error("Data pos tidak valid.");
+    return {...p,date:p.date||"",freq:["day","week","month"].includes(p.freq)?p.freq:"month",color:COLORS.includes(p.color)?p.color:COLORS[i%COLORS.length]};
+  });
+  const txs=saved.txs.map(t=>{
+    if(!t||!Number.isSafeInteger(t.id)||typeof t.pot!=="string"||!Number.isSafeInteger(t.amt)||t.amt===0||!validDate(t.date)||(t.note!=null&&typeof t.note!=="string"))throw new Error("Data transaksi tidak valid.");
+    return {...t,note:t.note||""};
+  });
+  return {pots,txs,name:typeof saved.name==="string"?saved.name.slice(0,20):"",onboarded:!!saved.onboarded};
+}
+let state=emptyState(),activeStorageKey="",legacyRaw=null,authMode="login",sessionPassword="",lockTimer=null;
+function authError(message){$("authErr").textContent=message}
+function showStorageError(message){$("storageErr").textContent=message;$("storageErr").hidden=false}
+function setAuthMode(mode){
+  authMode=mode;
+  const creating=mode==="create";
+  $("authTitle").textContent=creating?"Buat akun lokal":"Masuk ke Dompet Tabungan";
+  $("authIntro").textContent=creating
+    ?(legacyRaw===null?"Buat akun dengan kata sandi unik untuk menyimpan data tabungan terenkripsi.":"Data tabungan lama ditemukan. Data akan dienkripsi dan dipindahkan ke akun ini.")
+    :"Masuk ke akun lokalmu. Setiap akun punya data terpisah dan terenkripsi.";
+  $("authMode").textContent=creating?"Kembali ke masuk":"Buat akun baru";
+  $("authSubmit").textContent=creating?"Buat akun dan lanjutkan":"Masuk";
+  $("confirmWrap").hidden=!creating;
+  $("authPass").autocomplete=creating?"new-password":"current-password";
+  authError("");
+}
+async function accountKey(username){
+  const bytes=new TextEncoder().encode(username.trim().toLowerCase());
+  const digest=await crypto.subtle.digest("SHA-256",bytes);
+  return ACCOUNT_PREFIX+[...new Uint8Array(digest)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+async function encryptionKey(password,salt){
+  const material=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt,iterations:310000,hash:"SHA-256"},material,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+}
+function toBase64(bytes){
+  let binary="";
+  for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode(...bytes.subarray(i,i+0x8000));
+  return btoa(binary);
+}
+const fromBase64=value=>Uint8Array.from(atob(value),c=>c.charCodeAt(0));
+async function encryptState(value,password){
+  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  const key=await encryptionKey(password,salt);
+  const data=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,new TextEncoder().encode(JSON.stringify(value)));
+  return JSON.stringify({version:1,salt:toBase64(salt),iv:toBase64(iv),data:toBase64(new Uint8Array(data))});
+}
+async function decryptState(raw,password){
+  const record=JSON.parse(raw);
+  if(!record||record.version!==1||typeof record.salt!=="string"||typeof record.iv!=="string"||typeof record.data!=="string")throw new Error("Format akun tidak dikenali.");
+  const key=await encryptionKey(password,fromBase64(record.salt));
+  const clear=await crypto.subtle.decrypt({name:"AES-GCM",iv:fromBase64(record.iv)},key,fromBase64(record.data));
+  return parseState(new TextDecoder().decode(clear));
+}
+const save=async()=>{
+  try{
+    if(!activeStorageKey)throw new Error("Akun belum terbuka.");
+    localStorage.setItem(activeStorageKey,await encryptState(state,sessionPassword));
+    return true;
+  }catch(e){
+    console.error("Tidak dapat mengenkripsi atau menyimpan data tabungan.",e);
+    showStorageError("Data tidak dapat disimpan dengan aman. Pastikan penyimpanan browser tersedia dan ruangnya cukup.");
+    return false;
+  }
+};
+async function saveChanges(previousState){
+  if(await save()){render();return true}
+  state=previousState;render();
+  const message="Data gagal disimpan. Perubahan dibatalkan; periksa ruang penyimpanan browser.";
+  if($("dTx").open)$("txErr").textContent=message;
+  if($("dPot").open)$("potErr").textContent=message;
+  if($("dHi").open)$("hiErr").textContent=message;
+  return false;
+}
+function lockApp(){
+  clearTimeout(lockTimer);lockTimer=null;
+  if($("dHi").open)$("dHi").close();
+  if($("dTx").open)$("dTx").close();
+  if($("dPot").open)$("dPot").close();
+  if($("dCf").open)$("dCf").close();
+  state=emptyState();activeStorageKey="";sessionPassword="";
+  $("appMain").hidden=true;$("authPanel").hidden=false;
+  $("authPass").value="";$("authConfirm").value="";
+  setAuthMode("login");$("authUser").focus();
+}
+function scheduleAutoLock(){
+  if(!activeStorageKey)return;
+  clearTimeout(lockTimer);
+  lockTimer=setTimeout(lockApp,300000);
+}
+async function authenticate(){
+  const username=$("authUser").value.trim();
+  const secret=$("authPass").value;
+  if(!/^[a-zA-Z0-9._-]{3,32}$/.test(username)){authError("Nama akun harus 3–32 karakter: huruf, angka, titik, garis bawah, atau tanda hubung.");return}
+  if(secret.length<12){authError("Kata sandi minimal 12 karakter.");return}
+  if(authMode==="create"&&$("authConfirm").value!==secret){authError("Ulangan kata sandi belum cocok.");return}
+  $("authSubmit").disabled=true;
+  try{
+    const key=await accountKey(username);
+    let nextState;
+    if(authMode==="create"){
+      if(localStorage.getItem(key)){authError("Akun dengan nama itu sudah ada di browser ini.");return}
+      nextState=legacyRaw===null?emptyState():parseState(legacyRaw);
+      const encrypted=await encryptState(nextState,secret);
+      localStorage.setItem(key,encrypted);
+      if(legacyRaw!==null){
+        localStorage.removeItem(KEY);
+        if(localStorage.getItem(KEY)!==null)throw new Error("Data lama belum berhasil dihapus.");
+        legacyRaw=null;
+      }
+    }else{
+      if(legacyRaw!==null){authError("Buat akun terlebih dahulu untuk mengenkripsi data lama.");return}
+      const encrypted=localStorage.getItem(key);
+      if(!encrypted){authError("Nama akun atau kata sandi salah.");return}
+      nextState=await decryptState(encrypted,secret);
+    }
+    state=nextState;activeStorageKey=key;sessionPassword=secret;
+    $("authPanel").hidden=true;$("appMain").hidden=false;$("storageErr").hidden=true;
+    $("authPass").value="";$("authConfirm").value="";authError("");
+    scheduleAutoLock();
+    render();
+    if(!state.onboarded)showHi();
+  }catch(e){
+    if(authMode==="login"&&e instanceof DOMException&&e.name==="OperationError"){
+      authError("Nama akun atau kata sandi salah.");return;
+    }
+    console.error("Tidak dapat membuka atau membuat akun lokal.",e);
+    authError(authMode==="login"?"Nama akun atau kata sandi salah.":"Akun tidak dapat dibuat. Data lama mungkin rusak atau penyimpanan browser tidak tersedia.");
+  }finally{$("authSubmit").disabled=false}
+}
+const balance=id=>state.txs.filter(t=>t.pot===id).reduce((a,t)=>a+t.amt,0);
+
+function render(){
+  const bals=state.pots.map(p=>({...p,bal:balance(p.id)}));
+  const total=bals.reduce((a,p)=>a+p.bal,0);
+  $("total").textContent=rp(total);
+  $("hello").textContent=state.name?"Halo, "+state.name:"Dompet Tabungan";
+  let msg;
+  if(!bals.length)msg="Tambah pos pertamamu untuk mulai.";
+  else if(total===0)msg="Mulai dari nominal kecil pun tidak apa-apa.";
+  else{
+    const g=bals.filter(p=>p.target>0).map(p=>({p,pct:p.bal/p.target*100})).sort((a,b)=>b.pct-a.pct);
+    const open=g.find(x=>x.pct<100);
+    if(!g.length)msg="Terus lanjut, tabunganmu makin tumbuh.";
+    else if(!open)msg="Semua targetmu sudah tercapai. Kamu hebat!";
+    else msg=`Pos ${open.p.name} sudah ${Math.round(open.pct)}%. ${open.pct>=50?"Sedikit lagi, semangat!":"Awal yang bagus, terus ya."}`;
+  }
+  $("cheer").textContent=msg;
+  $("seg").innerHTML=total>0?bals.filter(p=>p.bal>0).map(p=>`<i style="width:${p.bal/total*100}%;background:${p.color}"></i>`).join(""):"";
+  $("legend").innerHTML=bals.map(p=>`<span><b style="background:${p.color}"></b>${esc(p.name)}</span>`).join("");
+  $("pots").innerHTML=bals.length?bals.map(p=>{
+    const pct=p.target>0?Math.min(100,p.bal/p.target*100):0;
+    return `<div class="card"><div class="row"><span class="nm">${esc(p.name)}</span><span class="amt">${rp(p.bal)}</span></div>
+    <div class="bar"><i style="width:${pct}%;background:${p.color}"></i></div>
+    ${plan(p)}<div class="row"><span class="sub">${p.target>0?`${Math.round(pct)}% dari target ${rp(p.target)}`:"Tanpa target"}</span><button class="edit" data-edit="${p.id}">Ubah</button></div></div>`}).join("")
+    :`<div class="empty">Belum ada pos. Buat pos pertamamu untuk mulai menabung.</div>`;
+  const list=[...state.txs].sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id).slice(0,15);
+  $("hist").innerHTML=list.length?list.map(t=>{
+    const p=state.pots.find(x=>x.id===t.pot);
+    return `<div class="tx"><div><div class="nm" style="font-weight:700">${esc(t.note||(t.amt>0?"Setoran":"Penarikan"))}</div>
+    <div class="sub">${esc(p?p.name:"Pos dihapus")}, ${fmtDate(t.date)}</div></div>
+    <div style="text-align:right"><div class="amt ${t.amt>0?"in":"out"}">${t.amt>0?"+":"−"}${rp(Math.abs(t.amt))}</div><button class="edit" data-tx="${t.id}">Ubah</button></div></div>`}).join("")
+    :`<div class="empty">Belum ada transaksi. Tekan Setor untuk mencatat yang pertama.</div>`;
+}
+function plan(p){
+  if(!p.date)return "";
+  const days=Math.round((new Date(p.date+"T00:00:00")-new Date(today()+"T00:00:00"))/864e5);
+  const when=fmtDate(p.date);
+  if(p.target>0&&p.bal>=p.target)return `<div class="sub">Tercapai. Target tanggalnya ${when}.</div>`;
+  if(days<0)return `<div class="sub out">Tanggal target ${when} sudah lewat. Ubah tanggalnya kalau perlu.</div>`;
+  let s=days===0?`Batas waktunya hari ini (${when}).`:`Target ${when}, ${days} hari lagi.`;
+  let h=`<div class="sub">${s}</div>`;
+  if(p.target>0){
+    const need=p.target-p.bal,f=p.freq||"month",d=Math.max(1,days);
+    const per=n=>{const x=need/n,st=x>=5000?1000:100;return Math.min(need,Math.ceil(x/st)*st)};
+    const opts=[["day","Per hari",per(d)],["week","Per minggu",per(Math.ceil(d/7))],["month","Per bulan",per(Math.ceil(d/30))]];
+    h+=`<div class="freq" role="group" aria-label="Pilih rencana setoran">`+opts.map(o=>`<button type="button" data-freq="${o[0]}" data-id="${p.id}" aria-pressed="${f===o[0]}"><small>${o[1]}</small><b>${rp(o[2])}</b></button>`).join("")+`</div>`;
+  }
+  return h;
+}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+
+let mode="in";
+function setMode(m){mode=m;$("tIn").setAttribute("aria-pressed",m==="in");$("tOut").setAttribute("aria-pressed",m==="out")}
+let txEditId=null;
+function openTx(m,id){
+  txEditId=null;
+  if(!state.pots.length){openPot();return}
+  setMode(m);
+  $("txPot").innerHTML=state.pots.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join("");
+  $("txAmt").value="";$("txNote").value="";$("txDate").value=today();$("txErr").textContent="";
+  $("txTitle").textContent="Catat transaksi";$("txDel").hidden=true;
+  if(typeof id==="number"){
+    const t=state.txs.find(x=>x.id===id);
+    if(t){
+      txEditId=id;setMode(t.amt>0?"in":"out");
+      $("txPot").value=t.pot;
+      $("txAmt").value=new Intl.NumberFormat("id-ID").format(Math.abs(t.amt));
+      $("txNote").value=t.note||"";$("txDate").value=t.date;
+      $("txTitle").textContent="Ubah transaksi";$("txDel").hidden=false;
+    }
+  }
+  $("dTx").showModal();
+}
+let editId=null;
+function openPot(id){
+  editId=typeof id==="string"?id:null;
+  const p=editId&&state.pots.find(x=>x.id===editId);
+  $("potTitle").textContent=p?"Ubah pos":"Pos baru";
+  $("potName").value=p?p.name:"";
+  $("potTarget").value=p&&p.target?new Intl.NumberFormat("id-ID").format(p.target):"";
+  $("potErr").textContent="";
+  $("potDel").hidden=!p;$("potDate").value=p&&p.date?p.date:"";
+  $("potSave").textContent=p?"Simpan":"Buat pos";
+  $("dPot").showModal();
+}
+
+const money=el=>el.addEventListener("input",()=>{const n=num(el.value);el.value=n?new Intl.NumberFormat("id-ID").format(n):""});
+money($("txAmt"));money($("potTarget"));
+
+$("authMode").onclick=()=>setAuthMode(authMode==="login"?"create":"login");
+$("authSubmit").onclick=authenticate;
+$("authPass").addEventListener("keydown",e=>{if(e.key==="Enter")authenticate()});
+$("authConfirm").addEventListener("keydown",e=>{if(e.key==="Enter")authenticate()});
+$("btnLock").onclick=lockApp;
+document.addEventListener("visibilitychange",()=>{if(document.hidden&&activeStorageKey)lockApp()});
+["pointerdown","keydown","touchstart","mousemove"].forEach(type=>document.addEventListener(type,scheduleAutoLock,{passive:true}));
+try{
+  legacyRaw=localStorage.getItem(KEY);
+  if(legacyRaw!==null){
+    setAuthMode("create");
+    $("authMode").hidden=true;
+  }
+}catch(e){
+  console.error("Tidak dapat memeriksa penyimpanan browser.",e);
+  authError("Penyimpanan browser tidak tersedia. Akun lokal tidak dapat dibuka atau dibuat.");
+  $("authSubmit").disabled=true;
+}
+if(!window.crypto?.subtle){
+  authError("Browser ini tidak mendukung enkripsi yang diperlukan. Perbarui browser untuk melindungi data.");
+  $("authSubmit").disabled=true;
+}
+
+$("btnIn").onclick=()=>openTx("in");
+$("btnOut").onclick=()=>openTx("out");
+$("btnPot").onclick=openPot;
+$("tIn").onclick=()=>setMode("in");
+$("tOut").onclick=()=>setMode("out");
+document.querySelectorAll("[data-close]").forEach(b=>b.onclick=()=>b.closest("dialog").close());
+
+$("txSave").onclick=async()=>{
+  const amt=num($("txAmt").value),pot=$("txPot").value;
+  if(!amt){$("txErr").textContent="Isi jumlah lebih dari nol.";return}
+  const signed=mode==="in"?amt:-amt,note=$("txNote").value.trim(),date=$("txDate").value||today();
+  const rest=state.txs.filter(x=>x.id!==txEditId);
+  const bal=id=>rest.filter(x=>x.pot===id).reduce((a,x)=>a+x.amt,0);
+  if(bal(pot)+signed<0){$("txErr").textContent="Saldo pos ini hanya "+rp(bal(pot))+".";return}
+  const previousState=JSON.parse(JSON.stringify(state));
+  const old=txEditId&&state.txs.find(x=>x.id===txEditId);
+  if(old&&old.pot!==pot&&bal(old.pot)<0){$("txErr").textContent="Pos asal akan bersaldo minus jika transaksi ini dipindah.";return}
+  if(old){Object.assign(old,{pot,amt:signed,note,date})}
+  else state.txs.push({id:Date.now(),pot,amt:signed,note,date});
+  if(await saveChanges(previousState))$("dTx").close();
+};
+$("potSave").onclick=async()=>{
+  const name=$("potName").value.trim();
+  if(!name){$("potErr").textContent="Beri nama untuk pos ini.";return}
+  const target=num($("potTarget").value),date=$("potDate").value;
+  if(date&&date<today()){$("potErr").textContent="Pilih tanggal yang belum lewat.";return}
+  const previousState=JSON.parse(JSON.stringify(state));
+  if(editId){const p=state.pots.find(x=>x.id===editId);if(p){p.name=name;p.target=target;p.date=date}}
+  else state.pots.push({id:"p"+Date.now(),name,target,date,color:COLORS[state.pots.length%COLORS.length]});
+  if(await saveChanges(previousState))$("dPot").close();
+};
+let cfCb=null;
+$("pots").addEventListener("click",async e=>{const c=e.target.closest("[data-freq]");if(c){const p=state.pots.find(x=>x.id===c.dataset.id);if(p){const previousState=JSON.parse(JSON.stringify(state));p.freq=c.dataset.freq;await saveChanges(previousState)}}});
+function ask(msg,cb){cfCb=cb;$("cfMsg").textContent=msg;$("dCf").showModal()}
+$("cfNo").onclick=()=>{cfCb=null;$("dCf").close()};
+$("cfYes").onclick=()=>{const cb=cfCb;cfCb=null;$("dCf").close();if(cb)cb()};
+$("pots").addEventListener("click",e=>{const b=e.target.closest("[data-edit]");if(b)openPot(b.dataset.edit)});
+$("potDel").onclick=()=>{
+  const p=state.pots.find(x=>x.id===editId);if(!p)return;
+  const b=balance(p.id);
+  ask(`Hapus pos “${p.name}”?`+(b>0?` Saldo ${rp(b)} dan riwayatnya ikut terhapus.`:""),async()=>{
+    const previousState=JSON.parse(JSON.stringify(state));
+    state.pots=state.pots.filter(x=>x.id!==p.id);state.txs=state.txs.filter(t=>t.pot!==p.id);
+    if(await saveChanges(previousState))$("dPot").close();
+  });
+};
+$("hist").addEventListener("click",e=>{const b=e.target.closest("[data-tx]");if(b)openTx("in",Number(b.dataset.tx))});
+$("txDel").onclick=()=>{
+  const t=state.txs.find(x=>x.id===txEditId);if(!t)return;
+  if(balance(t.pot)-t.amt<0){$("txErr").textContent="Belum bisa dihapus: saldo pos akan menjadi minus. Ubah atau hapus penarikan setelahnya dulu.";return}
+  ask("Hapus transaksi "+rp(Math.abs(t.amt))+"?",async()=>{
+    const previousState=JSON.parse(JSON.stringify(state));
+    state.txs=state.txs.filter(x=>x.id!==t.id);
+    if(await saveChanges(previousState))$("dTx").close();
+  });
+};
+$("btnReset").onclick=()=>{
+  ask("Hapus semua pos dan transaksi? Tindakan ini tidak bisa dibatalkan.",async()=>{
+    const previousState=JSON.parse(JSON.stringify(state));
+    state=emptyState();
+    if(await saveChanges(previousState))showHi();
+  });
+};
+document.querySelectorAll(".gt").forEach(money);
+function showHi(){
+  $("hiErr").textContent="";
+  $("hiName").value=state.name||"";
+  document.querySelectorAll(".goal").forEach(r=>{r.querySelector(".gn").value="";r.querySelector(".gt").value=""});
+  $("dHi").showModal();
+}
+async function finishHi(skip){
+  const previousState=JSON.parse(JSON.stringify(state));
+  if(!skip){
+    state.name=$("hiName").value.trim().slice(0,20);
+    const goals=[...document.querySelectorAll(".goal")].map(r=>({name:r.querySelector(".gn").value.trim(),target:num(r.querySelector(".gt").value)})).filter(g=>g.name);
+    if(goals.length){
+      if(!state.txs.length)state.pots=[];
+      goals.forEach((g,i)=>state.pots.push({id:"p"+Date.now()+i,name:g.name,target:g.target,color:COLORS[state.pots.length%COLORS.length]}));
+    }
+  }
+  state.onboarded=true;
+  if(await saveChanges(previousState))$("dHi").close();
+}
+$("hiGo").onclick=()=>finishHi(false);
+$("hiSkip").onclick=()=>finishHi(true);
+$("dHi").addEventListener("cancel",e=>{e.preventDefault();finishHi(true)});
+if(legacyRaw!==null)$("authIntro").textContent="Data tabungan lama ditemukan. Buat akun untuk mengenkripsinya dan memindahkannya dengan aman.";
+</script>
+</body>
+</html>
