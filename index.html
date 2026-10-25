@@ -91,6 +91,8 @@ input,select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid va
 .topline h1{margin-bottom:2px!important}
 .lock{background:var(--bg);color:var(--accent);font-size:.82rem}
 .goal{display:grid;grid-template-columns:1.4fr 1fr;gap:8px;margin-top:8px}
+.goal .goal-date{grid-column:1/-1;margin:0;font-size:.78rem}
+.goal .goal-date input{display:block;margin-top:4px}
 .freq{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0 10px}
 .freq button{padding:8px 4px;border-radius:12px;background:var(--bg);border:1px solid var(--line);text-align:center;line-height:1.25}
 .freq button small{display:block;color:var(--muted);font-size:.7rem}
@@ -105,10 +107,10 @@ input,select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid va
   <div class="auth-card">
     <h1 id="authTitle">Dompet Tabungan</h1>
     <p class="sub" id="authIntro">Masuk ke akun lokalmu. Setiap akun punya data terpisah dan terenkripsi.</p>
-    <label for="authUser">Nama akun</label>
-    <input id="authUser" type="text" maxlength="32" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Contoh: namaku">
+    <label for="authUser" id="authUserLabel">Nama akun</label>
+    <input id="authUser" type="text" maxlength="32" autocomplete="username" autocapitalize="words" spellcheck="false" placeholder="Nama yang digunakan saat daftar">
     <label for="authPass">Kata sandi</label>
-    <input id="authPass" type="password" maxlength="128" autocomplete="current-password" placeholder="Minimal 12 karakter">
+    <input id="authPass" type="password" maxlength="128" autocomplete="current-password" placeholder="Minimal 6 karakter">
     <div id="confirmWrap" hidden>
       <label for="authConfirm">Ulangi kata sandi</label>
       <input id="authConfirm" type="password" maxlength="128" autocomplete="new-password">
@@ -153,12 +155,10 @@ input,select{width:100%;padding:12px 14px;border-radius:14px;border:1px solid va
 <dialog id="dHi">
   <h2>Selamat datang. Senang kamu mulai hari ini.</h2>
   <p class="sub">Menabung tidak harus langsung besar. Yang penting rutin dan pelan-pelan. Atur dulu seperlunya, semuanya bisa kamu ubah kapan saja.</p>
-  <label for="hiName">Boleh tahu namamu?</label>
-  <input id="hiName" placeholder="Nama panggilan" maxlength="20" autocomplete="off">
   <p class="sub" style="margin:12px 0 6px">Kamu ingin menabung untuk apa?</p>
-  <div class="goal"><input class="gn" aria-label="Tujuan 1" placeholder="Misalnya: Dana darurat" maxlength="30" autocomplete="off"><input class="gt" aria-label="Target tujuan 1" inputmode="numeric" placeholder="Target (Rp)" autocomplete="off"></div>
-  <div class="goal"><input class="gn" aria-label="Tujuan 2" placeholder="Misalnya: Liburan" maxlength="30" autocomplete="off"><input class="gt" aria-label="Target tujuan 2" inputmode="numeric" placeholder="Target (Rp)" autocomplete="off"></div>
-  <div class="goal"><input class="gn" aria-label="Tujuan 3" placeholder="Misalnya: Investasi" maxlength="30" autocomplete="off"><input class="gt" aria-label="Target tujuan 3" inputmode="numeric" placeholder="Target (Rp)" autocomplete="off"></div>
+  <div class="goal"><input class="gn" aria-label="Tujuan 1" placeholder="Misalnya: Dana darurat" maxlength="30" autocomplete="off"><input class="gt" aria-label="Target tujuan 1" inputmode="numeric" placeholder="Target (Rp)" autocomplete="off"><label class="goal-date">Target tanggal (opsional)<input class="gd" aria-label="Target tanggal tujuan 1" type="date"></label></div>
+  <div class="goal"><input class="gn" aria-label="Tujuan 2" placeholder="Misalnya: Liburan" maxlength="30" autocomplete="off"><input class="gt" aria-label="Target tujuan 2" inputmode="numeric" placeholder="Target (Rp)" autocomplete="off"><label class="goal-date">Target tanggal (opsional)<input class="gd" aria-label="Target tanggal tujuan 2" type="date"></label></div>
+  <div class="goal"><input class="gn" aria-label="Tujuan 3" placeholder="Misalnya: Investasi" maxlength="30" autocomplete="off"><input class="gt" aria-label="Target tujuan 3" inputmode="numeric" placeholder="Target (Rp)" autocomplete="off"><label class="goal-date">Target tanggal (opsional)<input class="gd" aria-label="Target tanggal tujuan 3" type="date"></label></div>
   <p class="sub" style="margin-top:10px">Satu saja sudah cukup. Kosongkan yang tidak perlu.</p>
   <p class="err" id="hiErr" role="alert"></p>
   <div class="btns" style="margin-top:16px"><button type="button" class="cancel" id="hiSkip">Lewati dulu</button><button type="button" class="ok" id="hiGo">Mulai menabung</button></div>
@@ -236,8 +236,11 @@ function setAuthMode(mode){
     :"Masuk ke akun lokalmu. Setiap akun punya data terpisah dan terenkripsi.";
   $("authMode").textContent=creating?"Kembali ke masuk":"Buat akun baru";
   $("authSubmit").textContent=creating?"Buat akun dan lanjutkan":"Masuk";
+  $("authUserLabel").textContent=creating?"Namamu":"Nama akun";
+  $("authUser").placeholder=creating?"Contoh: Budi Santoso":"Nama yang digunakan saat daftar";
   $("confirmWrap").hidden=!creating;
   $("authPass").autocomplete=creating?"new-password":"current-password";
+  $("authPass").placeholder="Minimal 6 karakter";
   authError("");
 }
 async function accountKey(username){
@@ -307,8 +310,8 @@ function scheduleAutoLock(){
 async function authenticate(){
   const username=$("authUser").value.trim();
   const secret=$("authPass").value;
-  if(!/^[a-zA-Z0-9._-]{3,32}$/.test(username)){authError("Nama akun harus 3–32 karakter: huruf, angka, titik, garis bawah, atau tanda hubung.");return}
-  if(secret.length<12){authError("Kata sandi minimal 12 karakter.");return}
+  if(!username||username.length>32||/[\u0000-\u001F\u007F]/.test(username)){authError("Nama harus diisi dan maksimal 32 karakter.");return}
+  if(secret.length<6){authError("Kata sandi minimal 6 karakter.");return}
   if(authMode==="create"&&$("authConfirm").value!==secret){authError("Ulangan kata sandi belum cocok.");return}
   $("authSubmit").disabled=true;
   try{
@@ -317,6 +320,7 @@ async function authenticate(){
     if(authMode==="create"){
       if(localStorage.getItem(key)){authError("Akun dengan nama itu sudah ada di browser ini.");return}
       nextState=legacyRaw===null?emptyState():parseState(legacyRaw);
+      if(!nextState.name)nextState.name=username.slice(0,20);
       const encrypted=await encryptState(nextState,secret);
       localStorage.setItem(key,encrypted);
       if(legacyRaw!==null){
@@ -523,18 +527,17 @@ $("btnReset").onclick=()=>{
 document.querySelectorAll(".gt").forEach(money);
 function showHi(){
   $("hiErr").textContent="";
-  $("hiName").value=state.name||"";
-  document.querySelectorAll(".goal").forEach(r=>{r.querySelector(".gn").value="";r.querySelector(".gt").value=""});
+  document.querySelectorAll(".goal").forEach(r=>{r.querySelector(".gn").value="";r.querySelector(".gt").value="";r.querySelector(".gd").value=""});
   $("dHi").showModal();
 }
 async function finishHi(skip){
   const previousState=JSON.parse(JSON.stringify(state));
   if(!skip){
-    state.name=$("hiName").value.trim().slice(0,20);
-    const goals=[...document.querySelectorAll(".goal")].map(r=>({name:r.querySelector(".gn").value.trim(),target:num(r.querySelector(".gt").value)})).filter(g=>g.name);
+    const goals=[...document.querySelectorAll(".goal")].map(r=>({name:r.querySelector(".gn").value.trim(),target:num(r.querySelector(".gt").value),date:r.querySelector(".gd").value})).filter(g=>g.name);
+    if(goals.some(g=>g.date&&g.date<today())){$("hiErr").textContent="Pilih tanggal target yang belum lewat.";return}
     if(goals.length){
       if(!state.txs.length)state.pots=[];
-      goals.forEach((g,i)=>state.pots.push({id:"p"+Date.now()+i,name:g.name,target:g.target,color:COLORS[state.pots.length%COLORS.length]}));
+      goals.forEach((g,i)=>state.pots.push({id:"p"+Date.now()+i,name:g.name,target:g.target,date:g.date,color:COLORS[state.pots.length%COLORS.length]}));
     }
   }
   state.onboarded=true;
